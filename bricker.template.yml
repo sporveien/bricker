@@ -1,0 +1,29 @@
+# WHen setting up bricker for a new Databricks repo,
+# copy this file into your repo and rename it to bricker.yml
+
+dbc_folders:
+  envfiles:   /.../
+  prod:       /.../
+  dev:        /.../
+  branches:   /.../
+
+dbc_envfile_path: .../...
+
+github_branches:
+  prod: master
+  dev:  dev
+
+api_url: https://<your account>.cloud.databricks.com/api/2.0/
+
+default_cluster_settings:
+  cluster_name:
+  num_workers:
+  node_type_id: r3.xlarge
+  spark_version: 2.1.x-scala2.10
+  aws_attributes:
+    availability: SPOT
+    instance_profile_arn:
+  spark_conf:
+    spark.hadoop.fs.s3.impl: com.databricks.s3a.S3AFileSystem
+    spark.hadoop.fs.s3n.impl: com.databricks.s3a.S3AFileSystem
+  custom_tags:
