@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import requests, base64, logging, os, errno, shutil, sys, yaml
 from pprint import pprint
-from urlparse import urlparse
+import urllib.parse
 from multiprocessing import Pool
 import click
 import git
@@ -15,7 +15,7 @@ def local_repo(): return git.Repo('.')
 def local_repo_active_branch(): return local_repo().active_branch.name
 
 def settings():
-    return yaml.load(file('bricker.yml', 'r'))
+    return yaml.safe_load(open('bricker.yml', 'r'))
 
 def dbc_base():
     if local_repo_active_branch() == settings()['github_branches']['prod']:
@@ -63,15 +63,14 @@ def list_local_notebooks():
     click.echo("Listing local notebooks in current folder")
     notebooks = []
     for root, dirnames, filenames in os.walk('.'):
-            for filename in filenames:
-                if filename.endswith(".py") and not root.startswith("./."):
-                    notebooks.append(path_from_local(os.path.join(root, filename)))
+        for filename in filenames:
+            if filename.endswith(".py") and not root.startswith("./."):
+                notebooks.append(path_from_local(os.path.join(root, filename)))
     return notebooks
 
 def compare_repos():
     local_notebooks = set(list_local_notebooks())
     dbc_notebooks = set(list_dbc_notebooks())
-
     dbc_has_envfile = True if settings()['dbc_envfile_path'] in dbc_notebooks else False
 
     dbc_notebooks.discard(settings()['dbc_envfile_path'])
@@ -89,7 +88,7 @@ def delete_local_notebook(path):
 
 def download_notebook(path):
     click.echo("Downloading notebook " + path)
-    content = base64.b64decode( dbc('workspace/export',json={ 'format': 'SOURCE', 'path': dbc_path(path) })["content"] )
+    content = base64.b64decode( dbc('workspace/export',json={ 'format': 'SOURCE', 'path': dbc_path(path) })["content"] ).decode('utf-8')
 
     dirpath = os.path.dirname(local_path(path))
     if dirpath != "" and not os.path.exists(dirpath):
@@ -99,7 +98,7 @@ def download_notebook(path):
         except OSError as exc:
             if exc.errno != errno.EEXIST: raise
 
-    with open(local_path(path), 'wb') as f: f.write(content)
+    with open(local_path(path), 'w', encoding="utf-8") as f: f.write(content)
 
 def delete_dbc_notebook(path):
     click.echo("Deleting DBC notebook " + path)
@@ -109,11 +108,11 @@ def upload_notebook(path):
     click.echo("Uploading notebook " + path)
     dbc('workspace/mkdirs', json={ 'path': os.path.dirname(dbc_path(path)) })
 
-    with open(local_path(path), 'r') as f: content = base64.b64encode(f.read())
+    with open(local_path(path), 'r', encoding="utf-8") as f: content = base64.b64encode(f.read().encode())
     dbc('workspace/import', json={ 'path':      dbc_path(path)
                         ,'language':  'PYTHON'
                         ,'overwrite': True
-                        ,'content':   content
+                        ,'content':   content.decode()
                         })
 
 def clone_env_file():
@@ -147,10 +146,10 @@ def cli():
 def compare():
     """Only compares which notebooks are where"""
     only_dbc, only_local, both, dbc_has_envfile = compare_repos()
-    print "\nNotebooks both local and in DBC: \n" + "\n".join(both)
-    print "\nNotebooks only in DBC: \n" + "\n".join(only_dbc)
-    print "\nNotebooks only local:  \n" + "\n".join(only_local)
-    print "\nDBC has envfile: " + ("Yes" if dbc_has_envfile else "No")
+    print("\nNotebooks both local and in DBC: \n" + "\n".join(both))
+    print("\nNotebooks only in DBC: \n" + "\n".join(only_dbc))
+    print("\nNotebooks only local:  \n" + "\n".join(only_local))
+    print("\nDBC has envfile: " + ("Yes" if dbc_has_envfile else "No"))
 
 @cli.command()
 def down():
@@ -168,7 +167,7 @@ def down():
     p = Pool(10) # Running the web requests in parallell to speed stuff up
     p.map(download_notebook, (both + only_dbc))
 
-    map(delete_local_notebook, only_local)
+    list(map(delete_local_notebook, only_local))
 
     click.echo("Staging all changes")
     local_repo().git.add(A=True)
@@ -189,9 +188,8 @@ def up(force):
             return
 
     p = Pool(10)
-
     # Uploading with no parallellization due to race condition issues in DBC
-    map(upload_notebook, (both + only_local))
+    list(map(upload_notebook, (both + only_local)))
     p.map(delete_dbc_notebook, only_dbc)
 
     if not dbc_has_envfile:
