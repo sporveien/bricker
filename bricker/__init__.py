@@ -187,6 +187,11 @@ def up(force):
             click.echo("No problem - aborting")
             return
 
+    # If settings contains excluded notebooks then exclude them from being deleted
+    if 'dbc_notebook_exclude' in settings().keys():
+        for exclude in settings()['dbc_notebook_exclude']:
+            only_dbc = [n for n in only_dbc if exclude not in n]
+
     p = Pool(10)
     # Uploading with no parallellization due to race condition issues in DBC
     list(map(upload_notebook, (both + only_local)))
