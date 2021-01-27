@@ -9,6 +9,10 @@ dbc_folders:
 
 dbc_envfile_path: .../...
 
+# dbc_notebook_exclude:
+#   - "_text_to_exclude"
+#   - "_new_text-to_exlude"
+
 github_branches:
   prod: master
   dev:  dev

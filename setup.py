@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='bricker',
     description='CLI tool for syncing a Databricks folder structure with a local git repo.',
-    version='0.4.3',
+    version='0.4.4',
     author='sporveien',
     author_email='brick@sporveien.com',
     url='https://github.com/sporveien/bricker',
