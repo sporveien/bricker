@@ -71,10 +71,11 @@ def list_local_notebooks():
 def compare_repos():
     local_notebooks = set(list_local_notebooks())
     dbc_notebooks = set(list_dbc_notebooks())
-    dbc_has_envfile = True if settings()['dbc_envfile_path'] in dbc_notebooks else False
-
-    dbc_notebooks.discard(settings()['dbc_envfile_path'])
-    local_notebooks.discard(settings()['dbc_envfile_path'])
+    dbc_has_envfile = 'dbc_envfile_path' in settings().keys()
+    
+    if dbc_has_envfile:
+        dbc_notebooks.discard(settings()['dbc_envfile_path'])
+        local_notebooks.discard(settings()['dbc_envfile_path'])
 
     only_dbc = sorted(list(dbc_notebooks - local_notebooks))
     only_local = sorted(list(local_notebooks - dbc_notebooks))
