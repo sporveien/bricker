@@ -198,7 +198,7 @@ def up(force):
     list(map(upload_notebook, (both + only_local)))
     p.map(delete_dbc_notebook, only_dbc)
 
-    if not dbc_has_envfile:
+    if not dbc_has_envfile and 'envfiles' in settings()['dbc_folders'].keys():
         clone_env_file()
 
 @cli.command()
