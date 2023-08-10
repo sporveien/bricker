@@ -26,8 +26,8 @@ def dbc_base():
         return settings()['dbc_folders']['branches'] + local_repo_active_branch() + "/"
 
 def dbc_path(path):        return dbc_base() + path
-def local_path(path):      return "./" + path + ".py"
-def path_from_local(path): return path.replace("\\","/").replace(".py","").replace("./","")
+def local_path(path):      return "./" + path
+def path_from_local(path): return path.replace("\\","/").replace("./","")
 def path_from_dbc(path):   return path.replace(dbc_base(),"")
 
 def dbc(endpoint, json, ignored_errors=[]):
@@ -64,7 +64,8 @@ def list_local_notebooks():
     notebooks = []
     for root, dirnames, filenames in os.walk('.'):
         for filename in filenames:
-            if filename.endswith(".py") and not root.startswith("./."):
+            if (not (filename.startswith(".") or filename == 'bricker.yml')
+                and not (root.startswith("./.") or "\\." in root)): # ignores directories starting with a "."
                 notebooks.append(path_from_local(os.path.join(root, filename)))
     return notebooks
 
@@ -111,6 +112,7 @@ def upload_notebook(path):
 
     with open(local_path(path), 'r', encoding="utf-8") as f: content = base64.b64encode(f.read().encode())
     dbc('workspace/import', json={ 'path':      dbc_path(path)
+                        ,'format': 'AUTO'
                         ,'language':  'PYTHON'
                         ,'overwrite': True
                         ,'content':   content.decode()
