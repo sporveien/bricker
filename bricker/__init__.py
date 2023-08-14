@@ -44,6 +44,8 @@ def dbc(endpoint, json, ignored_errors=[]):
         raise click.ClickException(res.text)
 
 def list_dbc_notebooks(path=None):
+    file_extensions = {'PYTHON': '.py', 'SCALA': '.scala', 'SQL': '.sql', 'R': '.r'}
+
     if path == None:
         path = dbc_path("")
         click.echo("Listing dbc notebooks in " + dbc_path(""))
@@ -54,10 +56,12 @@ def list_dbc_notebooks(path=None):
         contents = res["objects"]
 
         folders   = [x['path']                for x in contents if x['object_type']=='DIRECTORY']
-        notebooks = [path_from_dbc(x['path']) for x in contents if x['object_type']=='NOTEBOOK']
+        notebooks = [path_from_dbc(x['path']) + file_extensions[x['language']]
+                     for x in contents if x['object_type'] == 'NOTEBOOK']
+        files = [path_from_dbc(x['path']) for x in contents if x['object_type'] == 'FILE']
         for folder in folders:
             notebooks += list_dbc_notebooks(folder)
-        return notebooks
+        return notebooks + files
 
 def list_local_notebooks():
     click.echo("Listing local notebooks in current folder")
