@@ -26,8 +26,8 @@ def dbc_base():
         return settings()['dbc_folders']['branches'] + local_repo_active_branch() + "/"
 
 def dbc_path(path):        return dbc_base() + path
-def local_path(path):      return "./" + path + ".py"
-def path_from_local(path): return path.replace("\\","/").replace(".py","").replace("./","")
+def local_path(path):      return "./" + path
+def path_from_local(path): return path.replace("\\","/").replace("./","")
 def path_from_dbc(path):   return path.replace(dbc_base(),"")
 
 def dbc(endpoint, json, ignored_errors=[]):
@@ -44,6 +44,8 @@ def dbc(endpoint, json, ignored_errors=[]):
         raise click.ClickException(res.text)
 
 def list_dbc_notebooks(path=None):
+    file_extensions = {'PYTHON': '.py', 'SCALA': '.scala', 'SQL': '.sql', 'R': '.r'}
+
     if path == None:
         path = dbc_path("")
         click.echo("Listing dbc notebooks in " + dbc_path(""))
@@ -54,17 +56,20 @@ def list_dbc_notebooks(path=None):
         contents = res["objects"]
 
         folders   = [x['path']                for x in contents if x['object_type']=='DIRECTORY']
-        notebooks = [path_from_dbc(x['path']) for x in contents if x['object_type']=='NOTEBOOK']
+        notebooks = [path_from_dbc(x['path']) + file_extensions[x['language']]
+                     for x in contents if x['object_type'] == 'NOTEBOOK']
+        files = [path_from_dbc(x['path']) for x in contents if x['object_type'] == 'FILE']
         for folder in folders:
             notebooks += list_dbc_notebooks(folder)
-        return notebooks
+        return notebooks + files
 
 def list_local_notebooks():
     click.echo("Listing local notebooks in current folder")
     notebooks = []
     for root, dirnames, filenames in os.walk('.'):
         for filename in filenames:
-            if filename.endswith(".py") and not root.startswith("./."):
+            if (not (filename.startswith(".") or filename == 'bricker.yml')
+                and not (root.startswith("./.") or "\\." in root)): # ignores directories starting with a "."
                 notebooks.append(path_from_local(os.path.join(root, filename)))
     return notebooks
 
@@ -111,6 +116,7 @@ def upload_notebook(path):
 
     with open(local_path(path), 'r', encoding="utf-8") as f: content = base64.b64encode(f.read().encode())
     dbc('workspace/import', json={ 'path':      dbc_path(path)
+                        ,'format': 'AUTO'
                         ,'language':  'PYTHON'
                         ,'overwrite': True
                         ,'content':   content.decode()
