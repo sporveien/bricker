@@ -31,11 +31,18 @@ def path_from_local(path): return path.replace("\\","/").replace("./","")
 def path_from_dbc(path):   return path.replace(dbc_base(),"")
 
 def dbc(endpoint, json, ignored_errors=[]):
-    api_method = requests.get if endpoint in ['workspace/list','workspace/export','clusters/list-zones','clusters/spark-versions'] else requests.post
-    if os.environ.get('DBC_USER'):
+    if endpoint in ['workspace/list','workspace/export','clusters/list-zones','clusters/spark-versions']:
+        api_method = requests.get
+    else:
+        api_method = requests.post
+
+    if os.environ.get('DBC_TOKEN'):
+        res = api_method(settings()['api_url'] + endpoint, json=json, headers={'Authorization': f'Bearer {os.environ["DBC_TOKEN"]}'})
+    elif os.environ.get('DBC_USER'):
         res = api_method(settings()['api_url'] + endpoint, json=json, auth=(os.environ['DBC_USER'],os.environ['DBC_PASS']))
     else:
         res = api_method(settings()['api_url'] + endpoint, json=json)
+
     if res.status_code == 401:
         raise click.ClickException("Unauthorized call to Databricks (remember to create a netrc file to authenticate with DBC - and check if your user/pass is the one used for DBC)")
     if res.status_code == requests.codes.ok or res.json()["error_code"] in ignored_errors:
@@ -199,10 +206,12 @@ def up(force):
         for exclude in settings()['dbc_notebook_exclude']:
             only_dbc = [n for n in only_dbc if exclude not in n]
 
-    p = Pool(10)
+    
     # Uploading with no parallellization due to race condition issues in DBC
     list(map(upload_notebook, (both + only_local)))
-    p.map(delete_dbc_notebook, only_dbc)
+    
+    for notebook_to_delete in only_dbc:
+        delete_dbc_notebook(notebook_to_delete)
 
     if not dbc_has_envfile and 'envfiles' in settings()['dbc_folders'].keys():
         clone_env_file()
