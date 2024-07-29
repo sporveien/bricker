@@ -206,10 +206,12 @@ def up(force):
         for exclude in settings()['dbc_notebook_exclude']:
             only_dbc = [n for n in only_dbc if exclude not in n]
 
-    p = Pool(10)
+    
     # Uploading with no parallellization due to race condition issues in DBC
     list(map(upload_notebook, (both + only_local)))
-    p.map(delete_dbc_notebook, only_dbc)
+    
+    for notebook_to_delete in only_dbc:
+        delete_dbc_notebook(notebook_to_delete)
 
     if not dbc_has_envfile and 'envfiles' in settings()['dbc_folders'].keys():
         clone_env_file()
